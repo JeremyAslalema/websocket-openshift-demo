@@ -119,12 +119,17 @@ function sendMessage() {
     const messageText = messageInput.value.trim();
     if (!messageText) return;
 
+    // Enviar al servidor
     socket.emit('message', { content: messageText });
     
+    // Actualizar contador
     messagesSent++;
     messagesSentSpan.textContent = messagesSent;
+    
+    // Agregar mensaje localmente (solo una vez)
     addLocalMessage(messageText);
     
+    // Limpiar input
     messageInput.value = '';
     messageInput.focus();
 }
@@ -174,40 +179,72 @@ function addSystemMessage(text, type = 'system') {
     scrollToBottom();
 }
 
-// Añadir mensaje recibido
+// Añadir mensaje recibido (SOLO de otros clientes)
 function addMessage(data) {
+    // 🔥 CORRECCIÓN: Ignorar nuestros propios mensajes (ya los agregamos localmente)
+    if (data.clientId === clientId) {
+        return; // No hacer nada, ya se agregó con addLocalMessage()
+    }
+    
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message-enter';
-    const isOwnMessage = data.clientId === clientId;
-    const messageClass = isOwnMessage ? 'ml-auto bg-blue-500 text-white' : 'mr-auto bg-gray-100 text-gray-800';
+    const messageClass = 'mr-auto bg-gray-100 text-gray-800';
     const time = data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
     const content = data.content || data.mensaje || JSON.stringify(data);
+    const senderId = data.clientId ? data.clientId.substring(0, 8) : 'anon';
     
-    messageDiv.innerHTML = `<div class="flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}"><div class="max-w-md ${messageClass} rounded-lg px-4 py-2"><div class="text-sm">${escapeHtml(content)}</div><div class="text-xs ${isOwnMessage ? 'text-blue-100' : 'text-gray-500'} mt-1 text-right">${time}</div></div></div>`;
+    messageDiv.innerHTML = `
+        <div class="flex flex-col items-start">
+            <div class="max-w-md ${messageClass} rounded-lg px-4 py-2">
+                <div class="text-xs font-medium text-gray-500 mb-1">${senderId}</div>
+                <div class="text-sm">${escapeHtml(content)}</div>
+                <div class="text-xs text-gray-500 mt-1 text-right">${time}</div>
+            </div>
+        </div>
+    `;
+    
     messagesList.appendChild(messageDiv);
     scrollToBottom();
 }
 
-// Añadir mensaje local
+// Añadir mensaje local (enviado por nosotros)
 function addLocalMessage(text) {
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message-enter';
     const time = new Date().toLocaleTimeString();
-    messageDiv.innerHTML = `<div class="flex flex-col items-end"><div class="max-w-md bg-blue-500 text-white rounded-lg px-4 py-2"><div class="text-sm">${escapeHtml(text)}</div><div class="text-xs text-blue-100 mt-1 text-right">${time}</div></div></div>`;
+    
+    messageDiv.innerHTML = `
+        <div class="flex flex-col items-end">
+            <div class="max-w-md bg-blue-500 text-white rounded-lg px-4 py-2">
+                <div class="text-sm">${escapeHtml(text)}</div>
+                <div class="text-xs text-blue-100 mt-1 text-right">${time}</div>
+            </div>
+        </div>
+    `;
+    
     messagesList.appendChild(messageDiv);
     scrollToBottom();
 }
 
+// Scroll automático al último mensaje
 function scrollToBottom() {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
+// Escapar HTML para prevenir XSS
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
+// Inicializar cuando la página carga
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Cliente WebSocket cargado - OpenShift Demo');
+    
+    // Detectar si estamos en OpenShift (para auto-configurar URL)
+    if (window.location.hostname.includes('github.io')) {
+        // Ya está configurada la URL correcta en el input
+        console.log('Cliente ejecutándose en GitHub Pages');
+    }
 });
