@@ -1,0 +1,10 @@
+# En la raíz del proyecto
+cd "C:\Users\JEREMY\OneDrive\Escritorio\Escritorio\Universidad\Semestre 8\Sistemas Distribuidos\websocket-openshift-demo"
+
+# Crear archivo .nojekyll
+echo "" > .nojekyll
+
+# Commit y push
+git add .nojekyll
+git commit -m "Disable Jekyll processing"
+git push
